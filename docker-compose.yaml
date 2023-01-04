@@ -1,0 +1,116 @@
+version: "3.8"
+
+services:
+  alice-bitcoind:
+    container_name: alice-bitcoind
+    restart: always
+    image: btcpayserver/bitcoin:24.0.1
+    expose:
+    - "8335"
+    - "39389"
+    - "28332"
+    - "28333"
+    environment:
+      BITCOIN_NETWORK: regtest
+      BITCOIN_EXTRA_ARGS: |
+        rpcport=8335
+        rpcbind=0.0.0.0
+        port=39389
+        # noconnect=1
+        # dnsseed=0
+        # dns=0
+        # upnp=0
+        # onlynet=ipv4
+        rpcallowip=0.0.0.0/0
+        rpcuser=regtest
+        rpcpassword=regtest
+        addnode=bob-bitcoind:39388
+        zmqpubrawblock=tcp://0.0.0.0:28332
+        zmqpubrawtx=tcp://0.0.0.0:28333
+    volumes:
+    - "alice_bitcoind_data:/data"
+
+  bob-bitcoind:
+    container_name: bob-bitcoind
+    restart: always
+    image: btcpayserver/bitcoin:24.0.1
+    expose:
+    - "8336"
+    - "39388"
+    - "12005"
+    - "12006"
+    environment:
+      BITCOIN_NETWORK: regtest
+      BITCOIN_EXTRA_ARGS: |
+        rpcport=8336
+        rpcbind=0.0.0.0
+        port=39388
+        # noconnect=1
+        # dnsseed=0
+        # dns=0
+        # upnp=0
+        # onlynet=ipv4
+        rpcallowip=0.0.0.0/0
+        rpcuser=regtest
+        rpcpassword=regtest
+        addnode=alice-bitcoind:39389
+        zmqpubrawblock=tcp://0.0.0.0:12005
+        zmqpubrawtx=tcp://0.0.0.0:12006
+    volumes:
+    - "bob_bitcoind_data:/data"
+
+  alice-lnd:
+    image: lnd
+    container_name: alice-lnd
+    build:
+      context: lnd/
+      dockerfile: Dockerfile
+    environment:
+      - RPCHOST=alice-bitcoind
+      - RPCPORT=8335
+      - NETWORK=regtest
+      - DEBUG=debug
+      - ZMQPUBRAWBLOCKPORT=28332
+      - ZMQPUBRAWTXPORT=28333
+    volumes:
+      - alice_lnd_datadir:/root/.lnd
+      - alice_bitcoind_data:/root/.bitcoin 
+    expose:
+      - "9735"
+    entrypoint: ["./start-lnd.sh"]
+    links:
+      - alice-bitcoind
+
+  bob-lnd:
+    image: lnd
+    container_name: bob-lnd
+    build:
+      context: lnd/
+      dockerfile: Dockerfile
+    environment:
+      - RPCHOST=bob-bitcoind
+      - RPCPORT=8336
+      - NETWORK=regtest
+      - DEBUG=debug
+      - ZMQPUBRAWBLOCKPORT=12005
+      - ZMQPUBRAWTXPORT=12006
+    volumes:
+      - bob_lnd_datadir:/root/.lnd
+      - bob_bitcoind_data:/root/.bitcoin
+    expose:
+      - "9735"
+    entrypoint: ["./start-lnd.sh"]
+    links:
+      - bob-bitcoind
+
+volumes:
+  alice_bitcoind_data:
+  bob_bitcoind_data:
+  # lnd volume is used for persisting lnd application data and chain state
+  # during container lifecycle.
+  alice_lnd_datadir:
+    driver: local
+  bob_lnd_datadir:
+    driver: local
+
+# networks: {}

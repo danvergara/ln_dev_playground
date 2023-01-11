@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 LND_DATA=${LND_DATA:-/root/.lnd}
@@ -16,21 +17,22 @@ RPCPORT=${RPCPORT:-8332}
 ZMQPUBRAWBLOCKPORT=${ZMQPUBRAWBLOCKPORT:-28332}
 ZMQPUBRAWTXPORT=${ZMQPUBRAWTXPORT:-28333}
 
+# rpclisten=localhost:10009
+# listen=localhost
+# restlisten=0.0.0.0
 # Generate the lnd.conf file
+
 cat > "$LND_DATA/lnd.conf" <<EOF
 [Application Options]
 debuglevel=${DEBUGLEVEL:-info}
 alias=${ALIAS:-alice}
-rpclisten=localhost:10009
-listen=localhost
-restlisten=0.0.0.0
 noseedbackup=${NOSEEDBACKUP:-false}
 
 [${CHAIN_TITLE}]
 ${CHAIN}.active=${ACTIVE:-1}
-${CHAIN}.mainnet=${MAINNET:-0}
-${CHAIN}.testnet=${TESTNET:-0}
-${CHAIN}.regtest=${REGTEST:-0}
+${CHAIN}.mainnet=${MAINNET:-false}
+${CHAIN}.testnet=${TESTNET:-false}
+${CHAIN}.regtest=${REGTEST:-true}
 ${CHAIN}.node=$BACKEND
 
 [${BACKEND_TITLE}]
@@ -40,3 +42,5 @@ ${BACKEND}.rpcpass=${RPCPASS:-regtest}
 ${BACKEND}.zmqpubrawblock=${RPCHOST}:${ZMQPUBRAWBLOCKPORT}
 ${BACKEND}.zmqpubrawtx=${RPCHOST}:${ZMQPUBRAWTXPORT}
 EOF
+
+echo "generated lnd.conf"

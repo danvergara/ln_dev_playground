@@ -59,49 +59,64 @@ services:
     volumes:
     - "bob_bitcoind_data:/data"
 
-  alice-lnd:
-    image: lnd
-    container_name: alice-lnd
-    build:
-      context: lnd/
-      dockerfile: Dockerfile
+  config-gen-alice:
+    image: bash
+    command: bash app/lnd/docker-entrypoint.sh
     environment:
       - RPCHOST=alice-bitcoind
       - RPCPORT=8335
       - NETWORK=regtest
-      - DEBUG=debug
+      - DEBUGLEVEL=debug
+      - REGTEST=true
       - ZMQPUBRAWBLOCKPORT=28332
       - ZMQPUBRAWTXPORT=28333
+      - NOSEEDBACKUP=true
+    volumes:
+      - alice_lnd_datadir:/root/.lnd
+      - .:/app
+
+  alice-lnd:
+    image: lightninglabs/lnd:v0.15.5-beta
+    container_name: alice-lnd
     volumes:
       - alice_lnd_datadir:/root/.lnd
       - alice_bitcoind_data:/root/.bitcoin 
     expose:
       - "9735"
-    entrypoint: ["./start-lnd.sh"]
     links:
       - alice-bitcoind
+    depends_on:
+      - config-gen-alice
 
-  bob-lnd:
-    image: lnd
-    container_name: bob-lnd
-    build:
-      context: lnd/
-      dockerfile: Dockerfile
+  config-gen-bob:
+    image: bash
+    command: bash app/lnd/docker-entrypoint.sh
     environment:
       - RPCHOST=bob-bitcoind
       - RPCPORT=8336
       - NETWORK=regtest
-      - DEBUG=debug
+      - DEBUGLEVEL=debug
+      - REGTEST=true
       - ZMQPUBRAWBLOCKPORT=12005
       - ZMQPUBRAWTXPORT=12006
+      - NOSEEDBACKUP=true
+      - ALIAS=bob
+    volumes:
+      - bob_lnd_datadir:/root/.lnd
+      - .:/app
+
+  bob-lnd:
+    image: lightninglabs/lnd:v0.15.5-beta
+    container_name: bob-lnd
     volumes:
       - bob_lnd_datadir:/root/.lnd
       - bob_bitcoind_data:/root/.bitcoin
     expose:
       - "9735"
-    entrypoint: ["./start-lnd.sh"]
     links:
       - bob-bitcoind
+    depends_on:
+      - config-gen-bob
 
 volumes:
   alice_bitcoind_data:
@@ -112,5 +127,3 @@ volumes:
     driver: local
   bob_lnd_datadir:
     driver: local
-
-# networks: {}
